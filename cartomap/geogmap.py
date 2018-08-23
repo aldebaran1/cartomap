@@ -58,7 +58,7 @@ def _lambert_ticks(ax, ticks, tick_location, line_constructor, tick_extractor):
     _ticks = []
     for t in ticks:
         xy = line_constructor(t, n_steps, extent)
-        proj_xyz = ax.projection.transform_points(ccrs.Geodetic(), xy[:, 0], xy[:, 1])
+        proj_xyz = ax.projection.transform_points(ccrs.PlateCarree(), xy[:, 0], xy[:, 1])
         xyt = proj_xyz[..., :2]
         ls = sgeom.LineString(xyt.tolist())
         locs = axis.intersection(ls)
@@ -90,9 +90,10 @@ def plotCartoMap(latlim=[0,75],lonlim=[-40,40],parallels=[],meridians=[],
             scale='50m',
             facecolor='none')
     if figsize is None:
-        figsize = (12,8)
-    fig = plt.figure(figsize=figsize)
-    fig.add_subplot(111,projection=ccrs.PlateCarree())
+        fig = plt.figure()
+    else:
+        fig = plt.figure(figsize=figsize)
+    fig.add_subplot(111, projection=ccrs.PlateCarree())
     if projection == 'stereo':
         ax = plt.axes(projection=ccrs.Stereographic(central_longitude=(sum(lonlim)/2)))
     if projection == 'merc':
@@ -136,5 +137,4 @@ def plotCartoMap(latlim=[0,75],lonlim=[-40,40],parallels=[],meridians=[],
         gl.xformatter = LONGITUDE_FORMATTER
         gl.yformatter = LATITUDE_FORMATTER
     
-    if figure:
-        return fig
+    return fig
