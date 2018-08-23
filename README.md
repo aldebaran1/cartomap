@@ -23,7 +23,7 @@ $ python setup.py install or develop
 ## API
 Load and retun a map:
 ```Python
-import cartomap as cm
+import cartomap.geogmap as cm
 
 fig = cm.plotCartoMap(arguments)
 ```
