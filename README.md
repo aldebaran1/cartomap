@@ -1,29 +1,32 @@
-# cartomap
+# CartoMap
+
 CartoPy based map utils
 
 Cartomap is a simplified interface with an easy API for CartoPy library.
 
-Install cartopy:
-```
-$ git clone https://github.com/SciTools/Cartopy
-$ cd cartopy
-$ python setup.py install
+## Install
 
-OR for conda users
-$ conda install -c conda-forge cartopy
-```
-
-Get and install cartomap
-```
-$ git clone https://github.com/aldebaran1/cartomap.git
-$ cd cartomap
-$ python setup.py install or develop
-```
+1. Install cartopy: due to the PROJ.4 prereqs, most users install by:
+   ```sh
+   conda install cartopy
+   ```
+   optionally, latest development version:
+   ```sh
+   git clone https://github.com/SciTools/Cartopy
+   cd cartopy
+   pip install -e .
+   ```
+2. Get and install cartomap
+   ```sh
+   git clone https://github.com/aldebaran1/cartomap.git
+   cd cartomap
+   pip install -e .
+   ```
 
 ## API
 Load and retun a map:
-```Python
-import cartomap.geogmap as cm
+```python
+import cartomap as cm
 
 fig = cm.plotCartoMap(arguments)
 ```
@@ -52,4 +55,4 @@ Cartomap supports the following projections:
 * LambertConformal as 'lambert'.
 
 Gridlines are automatically computed, this interface includes additional routines to include Gridline ticks and labels for 
-Sterographic and Labert projection, which are not included in CartoPy as per today, ie, Cartopy v0.16.0
+Sterographic and Lambert projection, which are not included in CartoPy as per today, ie, Cartopy v0.16.0
