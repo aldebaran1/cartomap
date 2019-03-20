@@ -11,6 +11,7 @@ from copy import copy
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+from cartopy.feature.nightshade import Nightshade
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
@@ -86,7 +87,7 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
                  figsize=(12, 8), projection='stereo', title='', resolution='110m',
                  states=True, grid_linewidth=0.5, grid_color='black', terrain=False,
                  grid_linestyle='--', background_color=None, border_color='k',
-                 figure=False):
+                 figure=False, nightshade=False, ns_dt=None, ns_alpha=0.1):
 
     STATES = cfeature.NaturalEarthFeature(
         category='cultural',
@@ -99,7 +100,7 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
     else:
         fig = plt.figure(figsize=figsize)
 
-    fig.gca(projection=ccrs.PlateCarree())
+#    fig.gca(projection=ccrs.PlateCarree())
     if projection == 'stereo':
         ax = plt.axes(projection=ccrs.Stereographic(central_longitude=(sum(lonlim)/2)))
     elif projection == 'merc':
@@ -118,9 +119,13 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
     ax.add_feature(cfeature.BORDERS, edgecolor=border_color)
     if terrain:
         ax.stock_img()
-    ax.set_extent([lonlim[0], lonlim[1], latlim[0], latlim[1]])
+    if nightshade:
+        assert ns_dt is not None
+        assert ns_alpha is not None
+        ax.add_feature(Nightshade(ns_dt, ns_alpha))
+    
 
-    if projection != 'merc':
+    if projection == 'stereo':
         fig.canvas.draw()
         gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color,
                           linestyle=grid_linestyle, linewidth=grid_linewidth)
@@ -135,12 +140,10 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
         gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=True,
                           linestyle=grid_linestyle, linewidth=grid_linewidth)
         gl.xlabels_top = False
+        gl.xlabels_bottom = False
         gl.ylabels_right = False
-
-        gl.xlocator = mticker.FixedLocator(meridians)
-        gl.ylocator = mticker.FixedLocator(parallels)
-        gl.xlabels_top = False
-        gl.xformatter = LONGITUDE_FORMATTER
-        gl.yformatter = LATITUDE_FORMATTER
-
-    return fig
+        gl.ylabels_left = False
+        
+    ax.set_extent([lonlim[0], lonlim[1], latlim[0], latlim[1]])
+    
+    return fig, ax
