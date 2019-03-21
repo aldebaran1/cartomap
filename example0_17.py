@@ -13,7 +13,7 @@ from cartopy.feature.nightshade import Nightshade
 
 
 fig = plt.figure(figsize=(10, 8))
-ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
+ax = fig.add_subplot(1, 1, 1, projection=ccrs.LambertConformal())
 ax.coastlines(color='black', resolution='110m')
 # ns
 date = datetime.datetime(2017, 8, 21, 11)

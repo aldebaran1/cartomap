@@ -125,7 +125,14 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
         ax.add_feature(Nightshade(ns_dt, ns_alpha))
     
 
-    if projection == 'stereo':
+    if projection == 'merc' or projection == 'plate':
+        gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=True,
+                          linestyle=grid_linestyle, linewidth=grid_linewidth)
+        gl.xlabels_top = True
+        gl.xlabels_bottom = True
+        gl.ylabels_right = False
+        gl.ylabels_left = False
+    else:
         fig.canvas.draw()
         gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color,
                           linestyle=grid_linestyle, linewidth=grid_linewidth)
@@ -136,14 +143,6 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
         gl.ylocator = mticker.FixedLocator(parallels)
         lambert_xticks(ax, meridians)
         lambert_yticks(ax, parallels)
-    else:
-        gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=True,
-                          linestyle=grid_linestyle, linewidth=grid_linewidth)
-        gl.xlabels_top = False
-        gl.xlabels_bottom = False
-        gl.ylabels_right = False
-        gl.ylabels_left = False
-        
     ax.set_extent([lonlim[0], lonlim[1], latlim[0], latlim[1]])
     
     return fig, ax
