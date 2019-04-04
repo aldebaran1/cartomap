@@ -6,8 +6,11 @@ Created on Thu May 10 10:32:04 2018
 @author: smrak
 """
 import numpy as np
-import shapely.geometry as sgeom
+from shapely import geometry as sgeom
 from copy import copy
+from datetime import datetime
+import apexpy as ap
+import igrf12
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -15,7 +18,6 @@ from cartopy.feature.nightshade import Nightshade
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
-
 
 def find_side(ls, side):
     """
@@ -87,7 +89,12 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
                  figsize=(12, 8), projection='stereo', title='', resolution='110m',
                  states=True, grid_linewidth=0.5, grid_color='black', terrain=False,
                  grid_linestyle='--', background_color=None, border_color='k',
-                 figure=False, nightshade=False, ns_dt=None, ns_alpha=0.1):
+                 figure=False, nightshade=False, ns_dt=None, ns_alpha=0.1,
+                 geomag=False, gmagtype='apex', date=None, 
+                 mlat_levels=None, mlon_levels=None, alt_km=0.0,
+                 mlon_colors='blue', mlat_colors='red', mgrid_width=1,
+                 mgrid_labels=True, mgrid_fontsize=12, mlon_cs='mlon',
+                 incl_levels=None, decl_levels=None, igrf_param='incl'):
 
     STATES = cfeature.NaturalEarthFeature(
         category='cultural',
@@ -126,23 +133,89 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
     
 
     if projection == 'merc' or projection == 'plate':
-        gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=True,
-                          linestyle=grid_linestyle, linewidth=grid_linewidth)
-        gl.xlabels_top = True
-        gl.xlabels_bottom = True
-        gl.ylabels_right = False
-        gl.ylabels_left = False
+        if isinstance(meridians, np.ndarray):
+            meridians = list(meridians)
+        if isinstance(parallels, np.ndarray):
+            parallels = list(parallels)
+        
+        if len(meridians) > 0 or len(parallels) > 0:
+            gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=False,
+                              linestyle=grid_linestyle, linewidth=grid_linewidth)
+        if len(meridians) > 0:
+            gl.xlocator = mticker.FixedLocator(meridians)
+            gl.xlabels_bottom = True
+        else:
+            gl.xlines = False
+        if len(parallels) > 0:
+            gl.ylocator = mticker.FixedLocator(parallels)
+            ax.yaxis.set_major_formatter(LONGITUDE_FORMATTER)
+            gl.ylabels_left = True
+        else:
+            gl.ylines = False
+#        
     else:
-        fig.canvas.draw()
         gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color,
                           linestyle=grid_linestyle, linewidth=grid_linewidth)
-        # Label the end-points of the gridlines using the custom tick makers:
         ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
         ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
+        if isinstance(meridians, np.ndarray):
+            meridians = list(meridians)
+        if isinstance(parallels, np.ndarray):
+            parallels = list(parallels)
         gl.xlocator = mticker.FixedLocator(meridians)
         gl.ylocator = mticker.FixedLocator(parallels)
         lambert_xticks(ax, meridians)
         lambert_yticks(ax, parallels)
+    # Geomagnetic coordinates @ Apex
+    if geomag:
+        if date is None:
+            date = datetime(2017, 12, 31, 0, 0, 0)
+        assert isinstance(date, datetime)
+        glon = np.arange(lonlim[0]-40, lonlim[1] + 40.1, 0.5)
+        glat = np.arange(latlim[0], latlim[1] + 0.1, 0.1)
+        longrid, latgrid = np.meshgrid(glon, glat)
+            
+        if gmagtype == 'apex':
+            A = ap.Apex(date = date)
+            
+            if mlon_cs == 'mlt':
+                mlat, mlon = A.convert(latgrid, longrid, 'geo', 'mlt', datetime=date)
+                if mlon_levels is None:
+                    mlon_levels = np.arange(0,24.1,1)
+            else:
+                mlat, mlon = A.convert(latgrid, longrid, 'geo', 'apex')
+                if mlon_levels is None:
+                    mlon_levels = np.arange(-180,180,20)
+            if mlat_levels is None:
+                mlat_levels = np.arange(-90,90.1,5)
+            
+            axy = plt.contour(glon,glat, mlat, levels = mlat_levels, colors = mlat_colors, 
+                             linewidths=mgrid_width, linestyles ='solid', 
+                             transform=ccrs.PlateCarree())
+            axx = plt.contour(glon,glat, mlon, levels = mlon_levels, colors = mlon_colors, 
+                             linewidths=mgrid_width, linestyles ='solid', 
+                             transform=ccrs.PlateCarree())
+            axx.clabel(inline=True, fmt = '%d', fontsize = mgrid_fontsize, colors = mlon_colors)
+            axy.clabel(inline=True, fmt = '%d', fontsize = mgrid_fontsize, colors = mlat_colors)
+        elif gmagtype == 'igrf':
+            mag = igrf12.gridigrf12(t=date, glat=latgrid, glon=longrid, alt_km=alt_km)
+            if incl_levels is None:
+                incl_levels = np.arange(-90, 90.1, 2)
+            if decl_levels is None:
+                decl_levels = np.arange(-30, 30.1, 2)
+            assert igrf_param in ('incl', 'decl')
+            if igrf_param == 'incl':
+                z = mag.incl.values
+                lvl = incl_levels
+            else:
+                z = mag.decl.values
+                lvl = decl_levels
+            ai = plt.contour(longrid, latgrid, z, levels=lvl, 
+                             colors='b', transform=ccrs.PlateCarree())
+            ai.clabel(inline=True, fmt = '%d', fontsize=12, colors='b')
+        else:
+            print ('Wrong input argument')
+    # Set Extent
     ax.set_extent([lonlim[0], lonlim[1], latlim[0], latlim[1]])
     
     return fig, ax
