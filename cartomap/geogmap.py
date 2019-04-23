@@ -94,7 +94,9 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
                  mlat_levels=None, mlon_levels=None, alt_km=0.0,
                  mlon_colors='blue', mlat_colors='red', mgrid_width=1,
                  mgrid_labels=True, mgrid_fontsize=12, mlon_cs='mlon',
-                 incl_levels=None, decl_levels=None, igrf_param='incl'):
+                 incl_levels=None, decl_levels=None, igrf_param='incl',
+                 mlon_labels=True, mlat_labels=True, mgrid_style='--',
+                 label_colors='k'):
 
     STATES = cfeature.NaturalEarthFeature(
         category='cultural',
@@ -138,9 +140,9 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
         if isinstance(parallels, np.ndarray):
             parallels = list(parallels)
         
-        if len(meridians) > 0 or len(parallels) > 0:
-            gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=False,
-                              linestyle=grid_linestyle, linewidth=grid_linewidth)
+#        if len(meridians) > 0 or len(parallels) > 0:
+        gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=False,
+                          linestyle=grid_linestyle, linewidth=grid_linewidth)
         if len(meridians) > 0:
             gl.xlocator = mticker.FixedLocator(meridians)
             gl.xlabels_bottom = True
@@ -166,38 +168,81 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
         gl.ylocator = mticker.FixedLocator(parallels)
         lambert_xticks(ax, meridians)
         lambert_yticks(ax, parallels)
+        
     # Geomagnetic coordinates @ Apex
     if geomag:
         if date is None:
             date = datetime(2017, 12, 31, 0, 0, 0)
         assert isinstance(date, datetime)
-        glon = np.arange(lonlim[0]-40, lonlim[1] + 40.1, 0.5)
-        glat = np.arange(latlim[0], latlim[1] + 0.1, 0.1)
-        longrid, latgrid = np.meshgrid(glon, glat)
+        
             
         if gmagtype == 'apex':
             A = ap.Apex(date = date)
             
             if mlon_cs == 'mlt':
-                mlat, mlon = A.convert(latgrid, longrid, 'geo', 'mlt', datetime=date)
+#                mlat, mlon = A.convert(latgrid, longrid, 'geo', 'mlt', datetime=date)
                 if mlon_levels is None:
                     mlon_levels = np.arange(0,24.1,1)
             else:
-                mlat, mlon = A.convert(latgrid, longrid, 'geo', 'apex')
+#                mlat, mlon = A.convert(latgrid, longrid, 'geo', 'apex')
                 if mlon_levels is None:
                     mlon_levels = np.arange(-180,180,20)
             if mlat_levels is None:
                 mlat_levels = np.arange(-90,90.1,5)
-            
-            axy = plt.contour(glon,glat, mlat, levels = mlat_levels, colors = mlat_colors, 
-                             linewidths=mgrid_width, linestyles ='solid', 
+                
+            mlat_range = np.arange(mlat_levels[0], mlat_levels[-1]+0.1, 0.1)
+            mlon_range = np.arange(mlon_levels[0], 24.3, 0.1)
+            for mlon in mlon_levels:
+                MLON = mlon * np.ones(mlat_range.size)
+                if mlon_cs == 'mlt':
+                    y, x = A.convert(mlat_range,MLON, 'mlt', 'geo', datetime=date)
+                else:
+                    y, x  = A.convert(mlat_range,MLON, 'apex', 'geo')
+                if int(mlon) == 0:# or int(mlon) == 2:
+                    continue
+                inmap = np.logical_and(x >= lonlim[0], x <= lonlim[1])
+                if np.sum(inmap) > 10:
+                    plt.plot(np.unwrap(x, 180), np.unwrap(y, 90), c=mlon_colors, 
+                             lw=mgrid_width, linestyle=mgrid_style,
                              transform=ccrs.PlateCarree())
-            axx = plt.contour(glon,glat, mlon, levels = mlon_levels, colors = mlon_colors, 
-                             linewidths=mgrid_width, linestyles ='solid', 
+                    ix = abs(y-np.mean(latlim)).argmin()
+                    mx = x[ix] - 1 if mlon >=10 else x[ix] - 0.5
+                    my = np.mean(latlim)
+                    if np.logical_and(mx >= lonlim[0], mx <= lonlim[1]) and int(mlon) is not 0:
+                        if mlon_labels:
+                            plt.text(mx, my, str(int(mlon)), color=label_colors, 
+                                     fontsize=14, backgroundcolor='white',
+                                     transform=ccrs.PlateCarree())
+            for mlat in mlat_levels:
+                MLAT = mlat * np.ones(mlon_range.size)
+                gy,gx = A.convert(MLAT, mlon_range, 'mlt', 'geo', datetime=date)
+                inmap = np.logical_and(gy >= latlim[0], gy <= latlim[1])
+                if np.sum(inmap) > 10:
+                    plt.plot(np.unwrap(gx, 180), np.unwrap(gy, 90), c=mlat_colors,
+                             lw=mgrid_width, linestyle=mgrid_style,
                              transform=ccrs.PlateCarree())
-            axx.clabel(inline=True, fmt = '%d', fontsize = mgrid_fontsize, colors = mlon_colors)
-            axy.clabel(inline=True, fmt = '%d', fontsize = mgrid_fontsize, colors = mlat_colors)
+                    ix = abs(gx-np.mean(lonlim)).argmin()
+                    mx = np.mean(lonlim)
+                    my = gy[ix] - 0.5
+                    if np.logical_and(mx >= lonlim[0], mx <= lonlim[1]) and \
+                    np.logical_and(my >= latlim[0], my <= latlim[1]):
+                        if mlat_labels:
+                            plt.text(mx, my, str(int(mlat)), color=label_colors, 
+                                     fontsize=14, backgroundcolor='white',
+                                     transform=ccrs.PlateCarree())
+#            axy = plt.contour(glon,glat, mlat, levels = mlat_levels, colors = mlat_colors, 
+#                             linewidths=mgrid_width, linestyles ='solid', 
+#                             transform=ccrs.PlateCarree())
+#            axx = plt.contour(glon,glat, mlon, levels = mlon_levels, colors = mlon_colors, 
+#                             linewidths=mgrid_width, linestyles ='solid', 
+#                             transform=ccrs.PlateCarree())
+#            axx.clabel(inline=True, fmt = '%d', fontsize = mgrid_fontsize, colors = mlon_colors)
+#            axy.clabel(inline=True, fmt = '%d', fontsize = mgrid_fontsize, colors = mlat_colors)
+        
         elif gmagtype == 'igrf':
+            glon = np.arange(lonlim[0]-40, lonlim[1] + 40.1, 0.5)
+            glat = np.arange(latlim[0], latlim[1] + 0.1, 0.5)
+            longrid, latgrid = np.meshgrid(glon, glat)
             mag = igrf12.gridigrf12(t=date, glat=latgrid, glon=longrid, alt_km=alt_km)
             if incl_levels is None:
                 incl_levels = np.arange(-90, 90.1, 2)
