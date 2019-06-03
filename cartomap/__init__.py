@@ -1,1 +1,1 @@
-from .geogmap import find_side, lambert_xticks, lambert_yticks, plotCartoMap  # noqa: F401
+from .geogmap import plotCartoMap  # noqa: F401
