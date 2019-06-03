@@ -132,42 +132,45 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
         assert ns_dt is not None
         assert ns_alpha is not None
         ax.add_feature(Nightshade(ns_dt, ns_alpha))
-    
-
+    # Draw Parralels
     if projection == 'merc' or projection == 'plate':
         if isinstance(meridians, np.ndarray):
             meridians = list(meridians)
         if isinstance(parallels, np.ndarray):
             parallels = list(parallels)
         
-#        if len(meridians) > 0 or len(parallels) > 0:
         gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=False,
                           linestyle=grid_linestyle, linewidth=grid_linewidth)
-        if len(meridians) > 0:
+        if len(meridians) > 0 or meridians is not None:
             gl.xlocator = mticker.FixedLocator(meridians)
             gl.xlabels_bottom = True
         else:
             gl.xlines = False
-        if len(parallels) > 0:
+        if len(parallels) > 0 or parallels is not None:
             gl.ylocator = mticker.FixedLocator(parallels)
             ax.yaxis.set_major_formatter(LONGITUDE_FORMATTER)
             gl.ylabels_left = True
         else:
             gl.ylines = False
-#        
     else:
-        gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color,
+        gl = ax.gridlines(crs=ccrs.PlateCarree(), color=grid_color, draw_labels=False,
                           linestyle=grid_linestyle, linewidth=grid_linewidth)
-        ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
-        ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
-        if isinstance(meridians, np.ndarray):
-            meridians = list(meridians)
-        if isinstance(parallels, np.ndarray):
-            parallels = list(parallels)
-        gl.xlocator = mticker.FixedLocator(meridians)
-        gl.ylocator = mticker.FixedLocator(parallels)
-#        lambert_xticks(ax, meridians)
-#        lambert_yticks(ax, parallels)
+        if meridians is not None:
+            if isinstance(meridians, np.ndarray):
+                meridians = list(meridians)
+            ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
+            ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
+            if isinstance(meridians, np.ndarray):
+                meridians = list(meridians)
+            gl.xlocator = mticker.FixedLocator(meridians)
+        else:
+            gl.xlines = False
+        if parallels is not None: 
+            if isinstance(parallels, np.ndarray):
+                parallels = list(parallels)
+            gl.ylocator = mticker.FixedLocator(parallels)
+        else:
+            gl.ylines = False
         
     # Geomagnetic coordinates @ Apex
     if apex:
