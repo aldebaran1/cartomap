@@ -86,8 +86,9 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 
 def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
-                 figsize=(12, 8), projection='stereo', title='', resolution='110m',
-                 states=True, grid_linewidth=0.5, grid_color='black', terrain=False,
+                 pole_center_lon=0,figsize=(12, 8), terrain=False,
+                 projection='stereo', title='', resolution='110m',
+                 states=True, grid_linewidth=0.5, grid_color='black', 
                  grid_linestyle='--', background_color=None, border_color='k',
                  figure=False, nightshade=False, ns_dt=None, ns_alpha=0.1,
                  apex=False, igrf=False, date=None, 
@@ -119,6 +120,13 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
     elif projection == 'lambert':
         ax = plt.axes(projection=ccrs.LambertConformal(central_longitude=(sum(lonlim)/2),
                                                        central_latitude=(sum(latlim)/2)))
+    elif projection == 'mollweide':
+        ax = plt.axes(projection=ccrs.Mollweide(central_longitude=(sum(lonlim)/2)))
+    elif projection == 'northpole':
+        ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=pole_center_lon))
+    elif projection == 'southpole':
+        ax = plt.axes(projection=ccrs.SouthPolarStereo(central_longitude=pole_center_lon))
+       
     if background_color is not None:
         ax.background_patch.set_facecolor(background_color)
     ax.set_title(title)
