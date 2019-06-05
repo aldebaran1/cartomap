@@ -24,7 +24,7 @@ Cartomap is a simplified interface with an easy API for CartoPy library.
    ```
 
 ## API
-Load and retun a map:
+Load and return a map:
 ```python
 import cartomap as cm
 
@@ -52,7 +52,10 @@ Cartomap supports the following projections:
 * Sterographic as 'stereo',
 * Mercator as 'merc',
 * PlateCarree as 'plate',
-* LambertConformal as 'lambert'.
+* LambertConformal as 'lambert',
+* NorthPolarStereo as 'north',
+* SouthPolarStereo as 'south',
+* Mollweide as 'mollweide'.
 
 Gridlines are automatically computed, this interface includes additional routines to include Gridline ticks and labels for 
 Sterographic and Lambert projection, which are not included in CartoPy as per today, ie, Cartopy v0.16.0
