@@ -22,6 +22,12 @@ Cartomap is a simplified interface with an easy API for CartoPy library.
    cd cartomap
    pip install -e .
    ```
+3. Get and install apexpy
+   ```sh
+   git clone https://github.com/scivision/apexpy.git (Windows)
+   git clone https://github.com/aburrell/apexpy (OS X, Linux)
+   cd apexpy
+   pip install -e .
 
 ## API
 Load and return a map:
