@@ -119,6 +119,13 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=[], meridians=[],
     elif projection == 'lambert':
         ax = plt.axes(projection=ccrs.LambertConformal(central_longitude=(sum(lonlim)/2),
                                                        central_latitude=(sum(latlim)/2)))
+    elif projection == 'mollweide':
+        ax = plt.axes(projection=ccrs.Mollweide(central_longitude=(sum(lonlim)/2)))
+    elif projection == 'north':
+        ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=(sum(lonlim)/2)))
+    elif projection == 'south':
+        ax = plt.axes(projection=ccrs.SouthPolarStereo(central_longitude=(sum(lonlim)/2)))
+
     if background_color is not None:
         ax.background_patch.set_facecolor(background_color)
     ax.set_title(title)
