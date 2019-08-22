@@ -130,15 +130,7 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         if meridians is None:
             gl.xlines = False
         else:
-#            if isinstance(meridians, np.ndarray):
-#                meridians = list(meridians)
-#            ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
-#            ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
-#            if isinstance(meridians, np.ndarray):
-#                meridians = list(meridians)
             gl.xlocator = mticker.FixedLocator(meridians)
-#        else:
-#            gl.xlines = False
         if parallels is not None: 
             if isinstance(parallels, np.ndarray):
                 parallels = list(parallels)
