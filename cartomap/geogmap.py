@@ -6,8 +6,6 @@ Created on Thu May 10 10:32:04 2018
 @author: smrak
 """
 import numpy as np
-#from shapely import geometry as sgeom
-#from copy import copy
 from datetime import datetime
 import apexpy as ap
 import igrf12
@@ -17,11 +15,20 @@ import cartopy.feature as cfeature
 from cartopy.feature.nightshade import Nightshade
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-#from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+
+projection_dict = {'stereo': ccrs.Stereographic(), 
+              'merc': ccrs.Mercator(),
+              'plate': ccrs.PlateCarree(),
+              'lambert': ccrs.LambertConformal(),
+              'mollweide': ccrs.Mollweide(),
+              'north': ccrs.NorthPolarStereo(),
+              'south': ccrs.NorthPolarStereo(),
+              'ortographic': ccrs.Orthographic()
+                  }
 
 def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=None,
                  pole_center_lon=0,figsize=(12, 8), terrain=False, ax=False,
-                 projection='stereo', title='', resolution='110m',
+                 projection='stereo', title='', resolution='110m', lon0=None,lat0=None,
                  states=True, grid_linewidth=0.5, grid_color='black', 
                  grid_linestyle='--', background_color=None, border_color='k',
                  figure=False, nightshade=False, ns_dt=None, ns_alpha=0.1,
@@ -33,7 +40,8 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                  mlon_labels=True, mlat_labels=True, mgrid_style='--',
                  label_colors='k',
                  decl_colors='k', incl_colors='k'):
-
+    if lonlim is None or lonlim == []:
+        lonlim = [-180, 180]
     STATES = cfeature.NaturalEarthFeature(
         category='cultural',
         name='admin_1_states_provinces_lines',
@@ -59,10 +67,23 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         elif projection == 'mollweide':
             ax = plt.axes(projection=ccrs.Mollweide(central_longitude=(sum(lonlim)/2)))
         elif projection == 'north':
-            ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=0))
+            if lon0 is None:
+                lon0 = 0
+            ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=lon0))
         elif projection == 'south':
-            ax = plt.axes(projection=ccrs.SouthPolarStereo(central_longitude=0))
-       
+            if lon0 is None:
+                lon0 = 0
+            ax = plt.axes(projection=ccrs.SouthPolarStereo(central_longitude=lon0))
+        elif projection == 'ortographic':
+            if lon0 is None:
+                lon0 = 0
+            if lat0 is None:
+                lat0 = 0
+            ax = plt.axes(projection=ccrs.Orthographic(central_longitude=lon0, central_latitude=lat0))
+        else:
+            print ("Projection is invalid. Please enter the right one. \n \
+                   'stereo', 'merc', 'plate', 'lambret', mollweide', 'north, 'south', 'ortographic'")
+            return 0
     if background_color is not None:
         ax.background_patch.set_facecolor(background_color)
     ax.set_title(title)
@@ -136,13 +157,13 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         if mlon_cs == 'mlt':
             if mlon_levels is None:
                 mlon_levels = np.array([])
-                mlon_range = np.arange(0, 24.1, 0.1)
+                mlon_range = np.arange(0, 24.01, 0.01)
             elif isinstance(mlon_levels, bool):
                 if mlon_levels == False:
                     mlon_levels = np.array([])
-                    mlon_range = np.arange(0, 24.1, 0.1)
+                    mlon_range = np.arange(0, 24.01, 0.01)
             else:
-                mlon_range = np.arange(mlon_levels[0], mlon_levels[-1]+0.1, 0.1)
+                mlon_range = np.arange(mlon_levels[0], mlon_levels[-1]+0.1, 0.01)
         else:
             if mlon_levels is None:
                 mlon_levels = np.array([])
@@ -154,8 +175,9 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
             else:
                 mlon_range = np.arange(mlon_levels[0], mlon_levels[0]+362, 0.1)
         if mlat_levels is None:
-            mlat_levels = np.arange(-90, 90.1, 5)
+            mlat_levels = np.arange(-90, 90.1, 1)
         mlat_range = np.arange(mlat_levels[0], mlat_levels[-1]+0.1, 0.1)
+        
         # Do meridans
         for mlon in mlon_levels:
             MLON = mlon * np.ones(mlat_range.size)
@@ -163,10 +185,11 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                 y, x = A.convert(mlat_range, MLON, 'mlt', 'geo', datetime=date)
             else:
                 y, x  = A.convert(mlat_range, MLON, 'apex', 'geo')
+            mlat_mask_extent = (y >=  latlim[0]+2) & (y <=  latlim[1]-2)
             # Plot meridian
             inmap = np.logical_and(x >= lonlim[0], x <= lonlim[1])
             if np.sum(inmap) > 10:
-                ax.plot(np.unwrap(x, 180), np.unwrap(y, 90), c=mlon_colors, 
+                ax.plot(np.unwrap(x[mlat_mask_extent], 180), np.unwrap(y[mlat_mask_extent], 90), c=mlon_colors, 
                          lw=mgrid_width, linestyle=mgrid_style,
                          transform=ccrs.PlateCarree())
                 
@@ -193,7 +216,7 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                 
                 gy, gx = A.convert(MLAT, mlon_range, 'apex', 'geo', datetime=date)
             inmap = np.logical_and(gy >= latlim[0], gy <= latlim[1])
-            if np.sum(inmap) > 10:
+            if np.sum(inmap) > 20:
                 ax.plot(np.unwrap(gx, 180), np.unwrap(gy, 90), c=mlat_colors,
                          lw=mgrid_width, linestyle=mgrid_style,
                          transform=ccrs.PlateCarree())
@@ -225,9 +248,16 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                 ax.contour(longrid, latgrid, z, levels=declination, 
                                  colors=incl_colors, transform=ccrs.PlateCarree())
     # Set Extent
-    
-    if lonlim[0] != -180 and lonlim[1] != 180:
-        ax.set_extent([lonlim[0], lonlim[1], latlim[0], latlim[1]], crs=ccrs.PlateCarree())
+    if projection == 'north' or projection == 'south':
+        import matplotlib.path as mpath
+        ax.set_extent([-180, 181, latlim[0], latlim[1]], crs=ccrs.PlateCarree())
+        theta = np.linspace(0, 2*np.pi, 100)
+        center, radius = [0.5, 0.5], 0.5
+        verts = np.vstack([np.sin(theta), np.cos(theta)]).T
+        circle = mpath.Path(verts * radius + center)
+        ax.set_boundary(circle, transform=ax.transAxes)
+    elif lonlim[0] != -180 and lonlim[1] != 180:
+        ax.set_extent([lonlim[0], lonlim[1], latlim[0], latlim[1]], crs=ccrs.PlateCarree())#ccrs.PlateCarree())
     
     if 'fig' in locals():
         return fig, ax
