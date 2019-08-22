@@ -9,7 +9,6 @@ import numpy as np
 from datetime import datetime
 import apexpy as ap
 import igrf12
-
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.feature.nightshade import Nightshade
@@ -120,7 +119,6 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         else:
             if len(parallels) > 0:
                 gl.ylocator = mticker.FixedLocator(parallels)
-#                ax.yaxis.set_major_formatter(LONGITUDE_FORMATTER)
                 gl.ylabels_left = True
             else:
                 gl.ylines = False
@@ -223,7 +221,6 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                     ax.text(mx, my, str(int(mlat)), color=label_colors, 
                              fontsize=14, backgroundcolor='white',
                              transform=ccrs.PlateCarree())
-                    
     if igrf:
         glon = np.arange(lonlim[0]-40, lonlim[1] + 40.1, 0.5)
         glat = np.arange(-90, 90 + 0.1, 0.5)
