@@ -14,6 +14,7 @@ import cartopy.feature as cfeature
 from cartopy.feature.nightshade import Nightshade
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from sunrise import terminator as ter
 
 projection_dict = {'stereo': ccrs.Stereographic(), 
               'merc': ccrs.Mercator(),
@@ -30,15 +31,20 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                  projection='stereo', title='', resolution='110m', lon0=None,lat0=None,
                  states=True, grid_linewidth=0.5, grid_color='black', 
                  grid_linestyle='--', background_color=None, border_color='k',
-                 figure=False, nightshade=False, ns_dt=None, ns_alpha=0.1,
+                 figure=False, nightshade=False, ns_alpha=0.1,
                  apex=False, igrf=False, date=None, 
                  mlat_levels=None, mlon_levels=None, alt_km=0.0,
                  mlon_colors='blue', mlat_colors='red', mgrid_width=1,
                  mgrid_labels=True, mgrid_fontsize=12, mlon_cs='mlon',
                  incl_levels=None, decl_levels=None, igrf_param='incl',
                  mlon_labels=True, mlat_labels=True, mgrid_style='--',
-                 label_colors='k',
-                 decl_colors='k', incl_colors='k'):
+                 label_colors='k', apex_alt=0,
+                 decl_colors='k', incl_colors='k',
+                 terminator=False, terminator_altkm=350,
+                 polarization_terminator=False, pt_hemisphere='north',
+                 ter_color='red', ter_style='--', ter_width=2,
+                 midnight=False, midnight_colors='m', midnight_width=2,
+                 midnight_style='--'):
     if lonlim is None or lonlim == []:
         lonlim = [-180, 180]
     STATES = cfeature.NaturalEarthFeature(
@@ -93,9 +99,9 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
     if terrain:
         ax.stock_img()
     if nightshade:
-        assert ns_dt is not None
+        assert date is not None
         assert ns_alpha is not None
-        ax.add_feature(Nightshade(ns_dt, ns_alpha))
+        ax.add_feature(Nightshade(date, ns_alpha))
     # Draw Parralels
     if projection == 'merc' or projection == 'plate':
         if isinstance(meridians, np.ndarray):
@@ -172,15 +178,16 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         for mlon in mlon_levels:
             MLON = mlon * np.ones(mlat_range.size)
             if mlon_cs == 'mlt':
-                y, x = A.convert(mlat_range, MLON, 'mlt', 'geo', datetime=date)
+                y, x = A.convert(mlat_range, MLON, 'mlt', 'geo', datetime=date, height=apex_alt)
             else:
-                y, x  = A.convert(mlat_range, MLON, 'apex', 'geo')
-            mlat_mask_extent = (y >=  latlim[0]+2) & (y <=  latlim[1]-2)
+                y, x  = A.convert(mlat_range, MLON, 'apex', 'geo', height=apex_alt)
+            mlat_mask_extent = (y >=  latlim[0] + 0.2) & (y <=  latlim[1] - 0.2)
             # Plot meridian
             inmap = np.logical_and(x >= lonlim[0], x <= lonlim[1])
             if np.sum(inmap) > 10:
-                ax.plot(np.unwrap(x[mlat_mask_extent], 180), np.unwrap(y[mlat_mask_extent], 90), c=mlon_colors, 
-                         lw=mgrid_width, linestyle=mgrid_style,
+                ax.plot(np.unwrap(x[mlat_mask_extent], 180), 
+                        np.unwrap(y[mlat_mask_extent], 90), c=mlon_colors, 
+                         lw=mgrid_width, linestyle=mgrid_style, zorder=90,
                          transform=ccrs.PlateCarree())
                 
             # Labels
@@ -201,14 +208,14 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         for mlat in mlat_levels:
             MLAT = mlat * np.ones(mlon_range.size)
             if mlon_cs == 'mlt':
-                gy, gx = A.convert(MLAT, mlon_range, 'mlt', 'geo', datetime=date)
+                gy, gx = A.convert(MLAT, mlon_range, 'mlt', 'geo', datetime=date, height=apex_alt)
             else:
                 
-                gy, gx = A.convert(MLAT, mlon_range, 'apex', 'geo', datetime=date)
+                gy, gx = A.convert(MLAT, mlon_range, 'apex', 'geo', datetime=date, height=apex_alt)
             inmap = np.logical_and(gy >= latlim[0], gy <= latlim[1])
             if np.sum(inmap) > 20:
                 ax.plot(np.unwrap(gx, 180), np.unwrap(gy, 90), c=mlat_colors,
-                         lw=mgrid_width, linestyle=mgrid_style,
+                         lw=mgrid_width, linestyle=mgrid_style, zorder=90,
                          transform=ccrs.PlateCarree())
                 
             # Labels
@@ -229,13 +236,48 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         if decl_levels is not None:
             z = mag.decl.values
             for declination in decl_levels:
-                ax.contour(longrid, latgrid, z, levels=declination, 
+                ax.contour(longrid, latgrid, z, levels=declination,  zorder=90,
                              colors=decl_colors, transform=ccrs.PlateCarree())
         if incl_levels is not None:
             z = mag.incl.values
             for inclination in incl_levels:
-                ax.contour(longrid, latgrid, z, levels=declination, 
+                ax.contour(longrid, latgrid, z, levels=declination,  zorder=90,
                                  colors=incl_colors, transform=ccrs.PlateCarree())
+    # Terminators
+    if terminator:
+        assert date is not None
+        if not isinstance(terminator_altkm, list):
+            terminator_altkm = [terminator_altkm]
+        for takm in terminator_altkm:
+            try:
+                glon_ter, glat_ter = ter.get_terminator(date, alt_km = takm)
+                if glon_ter is not None and glat_ter is not None:
+                    if isinstance(glon_ter, list):
+                        for i in range(len(glon_ter)):
+                            ax.plot(np.unwrap(glon_ter[i], 180), np.unwrap(glat_ter[i], 90),
+                                c=ter_color, lw=ter_width, ls=ter_style, zorder=90,
+                                transform=ccrs.PlateCarree())
+                    else:
+                        ax.plot(np.unwrap(glon_ter, 180), np.unwrap(glat_ter, 90),
+                                c=ter_color, lw=ter_width, ls=ter_style, zorder=90,
+                                transform=ccrs.PlateCarree())
+            except:
+                pass
+    if midnight:
+        mlat_range = np.arange(-89.9, 90.1, 0.1)
+        MLON = 0 * np.ones(mlat_range.size)
+        if mlon_cs == 'mlt':
+            y, x = A.convert(mlat_range, MLON, 'mlt', 'geo', datetime=date, height=apex_alt)
+        else:
+            y, x  = A.convert(mlat_range, MLON, 'apex', 'geo', height=apex_alt)
+        mlat_mask_extent = (y >=  latlim[0] + 0.2) & (y <=  latlim[1] - 0.2)
+        # Plot meridian
+        inmap = np.logical_and(x >= lonlim[0], x <= lonlim[1])
+        if np.sum(inmap) > 10:
+            ax.plot(np.unwrap(x[mlat_mask_extent], 180), 
+                    np.unwrap(y[mlat_mask_extent], 90), c=midnight_colors, 
+                     lw=midnight_width, linestyle=midnight_style, zorder=90,
+                     transform=ccrs.PlateCarree())
     # Set Extent
     if projection == 'north' or projection == 'south':
         import matplotlib.path as mpath
