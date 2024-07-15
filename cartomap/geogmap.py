@@ -7,24 +7,50 @@ Created on Thu May 10 10:32:04 2018
 """
 import numpy as np
 from datetime import datetime
-import apexpy as ap
-import igrf12
+try:
+    import apexpy as ap
+except: 
+    pass
+try:
+    import igrf
+except:
+    pass
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.feature.nightshade import Nightshade
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from sunrise import terminator as ter
+try:
+    from sunrise import terminator as ter
+except:
+    pass
 
 projection_dict = {'stereo': ccrs.Stereographic(), 
-              'merc': ccrs.Mercator(),
-              'plate': ccrs.PlateCarree(),
-              'lambert': ccrs.LambertConformal(),
-              'mollweide': ccrs.Mollweide(),
-              'north': ccrs.NorthPolarStereo(),
-              'south': ccrs.NorthPolarStereo(),
-              'ortographic': ccrs.Orthographic()
+                  'merc': ccrs.Mercator(),
+                  'plate': ccrs.PlateCarree(),
+                  'lambert': ccrs.LambertConformal(),
+                  'mollweide': ccrs.Mollweide(),
+                  'north': ccrs.NorthPolarStereo(),
+                  'south': ccrs.NorthPolarStereo(),
+                  'ortographic': ccrs.Orthographic(),
+                  'robinson': ccrs.Robinson(),
+                  'miller': ccrs.Miller(),
+                  'geostationary': ccrs.Geostationary(),
                   }
+
+def carto_quiver(ax, x, y, vx, vy, width=1, color='b', scale=1, figure=False):
+    vxx = np.divide(vx, np.cos(np.radians(y)))
+    vyy = vy
+    magn = np.sqrt(vx**2 + vy**2)
+    magn_src_crs = np.sqrt(vxx**2 + vyy**2)
+    
+    Q = ax.quiver(x,y, vxx*magn/magn_src_crs, vyy*magn/magn_src_crs, 
+              width=width, scale=scale, color=color, 
+              transform=ccrs.PlateCarree())
+    if figure:
+        return Q, ax
+    else:
+        return ax
 
 def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=None,
                  pole_center_lon=0,figsize=(12, 8), terrain=False, ax=False,
@@ -32,7 +58,7 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                  states=True, grid_linewidth=0.5, grid_color='black', 
                  grid_linestyle='--', background_color=None, border_color='k',
                  figure=False, nightshade=False, ns_alpha=0.1,
-                 apex=False, igrf=False, date=None, 
+                 apex=False, date=None, 
                  mlat_levels=None, mlon_levels=None, alt_km=0.0,
                  mlon_colors='blue', mlat_colors='red', mgrid_width=1,
                  mgrid_labels=True, mgrid_fontsize=12, mlon_cs='mlon',
@@ -70,7 +96,15 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
             ax = plt.axes(projection=ccrs.LambertConformal(central_longitude=(sum(lonlim)/2),
                                                            central_latitude=(sum(latlim)/2)))
         elif projection == 'mollweide':
-            ax = plt.axes(projection=ccrs.Mollweide(central_longitude=(sum(lonlim)/2)))
+            if lon0 is not None:
+                ax = plt.axes(projection=ccrs.Mollweide(central_longitude=lon0))
+            else:
+                ax = plt.axes(projection=ccrs.Mollweide(central_longitude=(sum(lonlim)/2)))
+        elif projection == 'robinson':
+            if lon0 is not None:
+                ax = plt.axes(projection=ccrs.Robinson(central_longitude=lon0))
+            else:
+                ax = plt.axes(projection=ccrs.Robinson(central_longitude=(sum(lonlim)/2)))
         elif projection == 'north':
             if lon0 is None:
                 lon0 = 0
@@ -89,8 +123,9 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
             print ("Projection is invalid. Please enter the right one. \n \
                    'stereo', 'merc', 'plate', 'lambret', mollweide', 'north, 'south', 'ortographic'")
             return 0
-    if background_color is not None:
-        ax.background_patch.set_facecolor(background_color)
+    # if background_color is not None:
+        ax.patch.set_facecolor(background_color)
+        # ax.background_img.set_facecolor(background_color)
     ax.set_title(title)
     ax.coastlines(color=border_color, resolution=resolution)  # 110m, 50m or 10m
     if states:
@@ -228,21 +263,20 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                     ax.text(mx, my, str(int(mlat)), color=label_colors, 
                              fontsize=14, backgroundcolor='white',
                              transform=ccrs.PlateCarree())
-    if igrf:
-        glon = np.arange(lonlim[0]-40, lonlim[1] + 40.1, 0.5)
-        glat = np.arange(-90, 90 + 0.1, 0.5)
+    
+    if mlat_levels is not None:
+        glon = np.arange(-180, 180.1, 4)
+        glat = np.arange(-90, 90.1, 2)
         longrid, latgrid = np.meshgrid(glon, glat)
-        mag = igrf12.gridigrf12(t=date, glat=latgrid, glon=longrid, alt_km=alt_km)
-        if decl_levels is not None:
-            z = mag.decl.values
-            for declination in decl_levels:
-                ax.contour(longrid, latgrid, z, levels=declination,  zorder=90,
-                             colors=decl_colors, transform=ccrs.PlateCarree())
-        if incl_levels is not None:
-            z = mag.incl.values
-            for inclination in incl_levels:
-                ax.contour(longrid, latgrid, z, levels=declination,  zorder=90,
-                                 colors=incl_colors, transform=ccrs.PlateCarree())
+        
+        incl = igrf.grid(date, glat=latgrid, glon=longrid, alt_km=alt_km).incl.values
+        ax.contour(longrid, latgrid, incl, levels=mlat_levels,  zorder=90,
+                   colors=mlat_colors, transform=ccrs.PlateCarree())
+        # if incl_levels is not None:
+        #     z = mag.incl.values
+        #     for inclination in incl_levels:
+        #         ax.contour(longrid, latgrid, z, levels=declination,  zorder=90,
+        #                          colors=incl_colors, transform=ccrs.PlateCarree())
     # Terminators
     if terminator:
         assert date is not None
