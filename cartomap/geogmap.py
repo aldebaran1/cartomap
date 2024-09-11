@@ -79,7 +79,10 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
         scale='50m',
         facecolor='none')
     
-    
+    if lon0 is None:
+        lon0 = sum(lonlim)/2
+    if lat0 is None:
+        lat0 = sum(latlim)/2
     if not ax:
         if figsize is None:
             fig = plt.figure()
@@ -87,24 +90,18 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
             fig = plt.figure(figsize=figsize)
         
         if projection == 'stereo':
-            ax = plt.axes(projection=ccrs.Stereographic(central_longitude=(sum(lonlim)/2)))
+            ax = plt.axes(projection=ccrs.Stereographic(central_longitude=lon0))
         elif projection == 'merc':
             ax = plt.axes(projection=ccrs.Mercator())
         elif projection == 'plate':
-            ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=(sum(lonlim)/2)))
+            ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=lon0))
         elif projection == 'lambert':
-            ax = plt.axes(projection=ccrs.LambertConformal(central_longitude=(sum(lonlim)/2),
-                                                           central_latitude=(sum(latlim)/2)))
+            ax = plt.axes(projection=ccrs.LambertConformal(central_longitude=lon0,
+                                                           central_latitude=lat0))
         elif projection == 'mollweide':
-            if lon0 is not None:
                 ax = plt.axes(projection=ccrs.Mollweide(central_longitude=lon0))
-            else:
-                ax = plt.axes(projection=ccrs.Mollweide(central_longitude=(sum(lonlim)/2)))
         elif projection == 'robinson':
-            if lon0 is not None:
                 ax = plt.axes(projection=ccrs.Robinson(central_longitude=lon0))
-            else:
-                ax = plt.axes(projection=ccrs.Robinson(central_longitude=(sum(lonlim)/2)))
         elif projection == 'north':
             if lon0 is None:
                 lon0 = 0
@@ -114,10 +111,6 @@ def plotCartoMap(latlim=[0, 75], lonlim=[-40, 40], parallels=None, meridians=Non
                 lon0 = 0
             ax = plt.axes(projection=ccrs.SouthPolarStereo(central_longitude=lon0))
         elif projection == 'ortographic':
-            if lon0 is None:
-                lon0 = 0
-            if lat0 is None:
-                lat0 = 0
             ax = plt.axes(projection=ccrs.Orthographic(central_longitude=lon0, central_latitude=lat0))
         else:
             print ("Projection is invalid. Please enter the right one. \n \
